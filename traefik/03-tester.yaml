@@ -38,27 +38,29 @@ spec:
   selector:
     app: containous
     task: whoami
+
 ---
-apiVersion: traefik.containo.us/v1alpha1
-kind: IngressRoute
+kind: Ingress
+apiVersion: networking.k8s.io/v1
 metadata:
-  name: whoami-route
+  name: "whoami-tester"
   namespace: default
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: le
+    traefik.ingress.kubernetes.io/router.tls.domains.0.main: henni.dev
+    traefik.ingress.kubernetes.io/router.tls.domains.0.sans: "*.henni.dev"
 
 spec:
-  entryPoints:
-    - web
-    - websecure
+  rules:
+    - host: k8s.henni.dev
+      http:
+        paths:
+          - path: /whoami
+            pathType: Exact
+            backend:
+              service:
+                name: whoami
+                port:
+                  number: 80
 
-  routes:
-    - match: Host(`k8s.henni.dev`) && PathPrefix(`/whoami`)
-      kind: Rule
-      services:
-        - name: whoami
-          port: 80
-  tls:
-    certResolver: le
-    domains:
-      - main: henni.dev
-        sans:
-          - "*.henni.dev"

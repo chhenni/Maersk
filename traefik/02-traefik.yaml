@@ -27,18 +27,27 @@ spec:
         - name: traefik
           image: traefik:v2.1
           args:
-            - --log.level=DEBUG
-            - --accesslog=true
-            - --accesslog.format=json
+            - --log.level=INFO
+#            - --accesslog=true
+#            - --accesslog.format=json
             - --api=true
             - --api.insecure=true
             - --api.dashboard=true
+
             - --entrypoints.web.address=:80
             - --entryPoints.websecure.Address=:443
+
             - --certificatesResolvers.le.acme.dnsChallenge=true
             - --certificatesResolvers.le.acme.dnsChallenge.provider=cloudflare
             - --certificatesresolvers.le.acme.email=chhenni@gmail.com
             - --certificatesresolvers.le.acme.storage=acme.json
+
+            - --metrics.prometheus=true
+            - --metrics.prometheus.addEntryPointsLabels=true
+            - --metrics.prometheus.addServicesLabels=true
+            - --entryPoints.metrics.address=:8082
+            - --metrics.prometheus.entryPoint=metrics
+
             # Please note that this is the staging Let's Encrypt server.
             # Once you get things working, you should remove that whole line altogether.
             # - --certificatesresolvers.le.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
@@ -48,6 +57,8 @@ spec:
               containerPort: 80
             - name: websecure
               containerPort: 443
+            - name: metrics
+              containerPort: 8082
             - name: admin
               containerPort: 8080
           env:
@@ -74,13 +85,17 @@ spec:
       name: web
       targetPort: 80
     - protocol: TCP
-      port: 8080
-      name: admin
-      targetPort: 8080
-    - protocol: TCP
       port: 443
       name: websecure
       targetPort: 443
+    - protocol: TCP
+      port: 8082
+      name: metrics
+      targetPort: 8082
+    - protocol: TCP
+      port: 8080
+      name: admin
+      targetPort: 8080
 
 ---
 kind: Ingress

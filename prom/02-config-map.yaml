@@ -11,7 +11,7 @@ data:
     - name: devopscube demo alert
       rules:
       - alert: High Pod Memory
-        expr: sum(container_memory_usage_bytes) > 1
+        expr: sum(container_memory_usage_bytes) < 0
         for: 1m
         labels:
           severity: slack
@@ -19,8 +19,8 @@ data:
           summary: High Memory Usage
   prometheus.yml: |-
     global:
-      scrape_interval: 5s
-      evaluation_interval: 5s
+      scrape_interval: 1m
+      evaluation_interval: 10m
     rule_files:
       - /etc/prometheus/prometheus.rules
     alerting:
@@ -31,6 +31,10 @@ data:
           - "alertmanager.monitoring.svc:9093"
 
     scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
       - job_name: 'node-exporter'
         kubernetes_sd_configs:
           - role: endpoints
@@ -40,31 +44,24 @@ data:
           action: keep
       
       - job_name: 'kubernetes-apiservers'
-
         kubernetes_sd_configs:
         - role: endpoints
         scheme: https
-
         tls_config:
           ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
         bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-
         relabel_configs:
         - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
           action: keep
           regex: default;kubernetes;https
 
       - job_name: 'kubernetes-nodes'
-
         scheme: https
-
         tls_config:
           ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
         bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-
         kubernetes_sd_configs:
         - role: node
-
         relabel_configs:
         - action: labelmap
           regex: __meta_kubernetes_node_label_(.+)
@@ -76,10 +73,8 @@ data:
           replacement: /api/v1/nodes/${1}/proxy/metrics     
       
       - job_name: 'kubernetes-pods'
-
         kubernetes_sd_configs:
         - role: pod
-
         relabel_configs:
         - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
           action: keep
@@ -107,16 +102,12 @@ data:
           - targets: ['kube-state-metrics.kube-system.svc.cluster.local:8080']
 
       - job_name: 'kubernetes-cadvisor'
-
         scheme: https
-
         tls_config:
           ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
         bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-
         kubernetes_sd_configs:
         - role: node
-
         relabel_configs:
         - action: labelmap
           regex: __meta_kubernetes_node_label_(.+)
@@ -126,12 +117,10 @@ data:
           regex: (.+)
           target_label: __metrics_path__
           replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
-      
-      - job_name: 'kubernetes-service-endpoints'
 
+      - job_name: 'kubernetes-service-endpoints'
         kubernetes_sd_configs:
         - role: endpoints
-
         relabel_configs:
         - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
           action: keep
@@ -157,3 +146,15 @@ data:
         - source_labels: [__meta_kubernetes_service_name]
           action: replace
           target_label: kubernetes_name
+
+      - job_name: 'traefik'
+        static_configs:
+          - targets: ['traefik:8082']
+
+      - job_name: 'netatmologger'
+        static_configs:
+          - targets: ['netatmologger:9095']
+
+      - job_name: 'grafana'
+        static_configs:
+          - targets: ['grafana:3000']

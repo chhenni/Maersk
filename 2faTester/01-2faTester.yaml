@@ -1,0 +1,69 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: 2fatester
+  namespace: default
+  labels:
+    app: 2ftester
+
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: 2fatester
+  template:
+    metadata:
+      labels:
+        app: 2fatester
+    spec:
+      containers:
+        - name: 2fatester
+          image: chhenni/sww2.2fatester:v0.1.4
+          ports:
+            - name: http
+              containerPort: 80
+          env:
+            - name: TeamsWebhook
+              value: https://skogdata.webhook.office.com/webhookb2/da0d6b73-b7bc-4aaf-815d-63ebc594067d@caab1ca1-b361-4b07-833e-421318f084ea/IncomingWebhook/5abc37aad68b4f97835041b4fa31ff45/6aa368e7-05a5-4c39-895e-92fb5342161b
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tmp-2fatester
+  namespace: default
+spec:
+  type: NodePort
+  selector:
+    app: 2fatester
+  ports:
+    - protocol: TCP
+      port: 80
+      name: http
+      targetPort: 80
+
+---
+kind: Ingress
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: tmp-2fatester-ingress
+  namespace: default
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: le
+    traefik.ingress.kubernetes.io/router.tls.domains.0.main: henni.dev
+    traefik.ingress.kubernetes.io/router.tls.domains.0.sans: "*.henni.dev"
+
+spec:
+  rules:
+    - host: 2fatester.henni.dev
+      http:
+        paths:
+          - path: /
+            pathType: Exact
+            backend:
+              service:
+                name: tmp-2fatester
+                port:
+                  number: 80
